@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Chess matches</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB"
+	    crossorigin="anonymous">
+
+	<!-- vue-->
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+	<!-- axios-->
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+	<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
+	<link type="text/css" rel="stylesheet" href="/css/style.css" />
+</head>
+<header th:include="includes/header"></header>
+
+<body>
+	<div id="root">
+		<div class="container">
+			<table class="table table-hover" style="margin-top: 5%;">
+				<thead class="thead-dark">
+					<tr>
+						<th>#</th>
+						<th>Ime</th>
+						<th>Prezime</th>
+						<th>Score</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tr v-for="(player, index) in players">
+					<td v-cloak>{{ index + 1 }}</td>
+					<td v-cloak>{{player.firstName}}</td>
+					<td v-cloak>{{player.lastName}}</td>
+					<td v-cloak>{{player.score}}</td>
+					<td v-cloak>
+						<a class="btn btn-warning btn-sm" v-on:click="openPlayerAoe(player.id)">Edit</a>
+						<a class="btn btn-success btn-sm" v-on:click="openPlayerMatches(player.id)">Mečevi</a>
+						<a class="btn btn-danger btn-sm" v-on:click="deletePlayer(player.id)">Delete</a>
+					</td>
+				</tr>
+
+			</table>
+			<a class="btn btn-dark text-white" v-on:click="openPlayerAoe()">Dodaj igrača</a>
+		</div>
+
+		<template>
+			<div v-if="playerAoe">
+				<b-modal @ok="submitPlayer(player)" v-model="playerAoe" id="modal-center" centered title="Dodaj igrača" v-bind:ok-title="modalButton">
+					<form id="saveForm">
+						<!-- <p v-if="errors.length">
+							<b>Please correct the following error(s):</b>
+							<ul>
+								<li v-for="error in errors">{{ error }}</li>
+							</ul>
+						</p> -->
+
+						<div class="form-group">
+							<label for="playerFirstName" class="col-form-label">Ime igrača:</label>
+							<input v-model="player.firstName" name="firstName" type="text" class="form-control" id="playerFirstName">
+						</div>
+						<div class="form-group">
+							<label for="playerLastName" class="col-form-label">Prezime igrača:</label>
+							<input v-model="player.lastName" name="lastName" type="text" class="form-control" id="playerLastName" required>
+						</div>
+						<div class="form-group">
+							<label for="playerScore" class="col-form-label">Score:</label>
+							<input v-model="player.score" name="score" type="number" min="0" class="form-control" id="playerScore" required>
+						</div>
+					</form>
+				</b-modal>
+			</div>
+		</template>
+
+		<template>
+			<div v-if="playerMatchesDetail">
+				<b-modal v-model="playerMatchesDetail" id="modal-center" centered title="Mečevi igrača">
+					<div class="modal-body" v-for="(playerMatch, index) in playerMatches" style="overflow-y: auto; max-height: 80%;">
+						<h4 class="text-primary text-"> {{index + 1}}. meč</h4>
+						<label class="labelDetail">Bijeli - score: </label>
+						<p>{{ playerMatch.white.firstName + " " + playerMatch.white.lastName + " -" + playerMatch.white.score }}
+						</p>
+						<label class="labelDetail">Crni - score: </label>
+						<p>{{ playerMatch.black.firstName + " " + playerMatch.black.lastName + "-" + playerMatch.black.score }}
+						</p>
+						<label class="labelDetail">Rezultat: </label>
+						<p>{{ playerMatch.result }} </p>
+						<label class="labelDetail">PGN: </label>
+						<p>{{ playerMatch.pgn }} </p>
+					</div>
+				</b-modal>
+			</div>
+		</template>
+
+
+	</div>
+</body>
+
+<footer class="page-footer font-small black" th:include="includes/footer.html"></footer>
+
+
+
+
+<script>
+	var app = new Vue({
+		el: '#root',
+		data: {
+			players: [],
+			playerMatches: [],
+			// errors: [],
+			playerAoe: false,
+			playerMatchesDetail: false,
+			modalButton: "",
+			firstName: null,
+			lastName: null,
+			score: null,
+			player: {
+				id: '',
+				firstName: "",
+				lastName: "",
+				score: null
+			}
+		},
+		mounted() {
+			this.getPlayers();
+		},
+		methods: {
+			getPlayers() {
+				axios.get("/players").then(function (response) {
+					this.players = response.data;
+				}.bind(this));
+			},
+			getPlayer(playerId) {
+				axios.get("/players/" + playerId).then(function (response) {
+					this.player = response.data;
+				}.bind(this));
+			},
+			getPlayerMatches(playerId) {
+				axios.get("/matches/player/" + playerId).then(function (response) {
+					this.playerMatches = response.data;
+				}.bind(this));
+			},
+			openPlayerAoe(playerId) {
+				if (playerId) {
+					this.modalButton = "Izmjeni";
+					this.getPlayer(playerId);
+				} else {
+					this.modalButton = "Dodaj";
+					this.reset(this.player);
+				}
+				this.playerAoe = true;
+			},
+			openPlayerMatches(playerId) {
+				if (playerId) {
+					this.getPlayerMatches(playerId);
+					this.playerMatchesDetail = true;
+				}
+			},
+			deletePlayer(playerId) {
+				axios.delete("/players/" + playerId).then((response) => {
+					console.log("delete uspio");
+					this.getPlayers();
+				}).catch(error => {
+					console.warn(error);
+				});
+			},
+			submitPlayer(player) {
+				// this.errors = [];
+				// if (!this.firstName) {
+				// 	this.errors.push("Ime je obavezno!");
+				// 	return false
+				// }
+				// if (!this.errors.length) {
+				// 	return true;
+				// }
+				if (player) {
+					if (player.id) {
+						this.updatePlayer(player);
+					} else {
+						this.savePlayer(player);
+						player = null;
+					}
+				} else {
+					return console.log('nema playera');
+				}
+			},
+			savePlayer(player) {
+				axios.post("/players", {
+					firstName: player.firstName,
+					lastName: player.lastName,
+					score: player.score,
+
+				}).then((response) => {
+
+					console.log("add uspio");
+					this.getPlayers();
+
+				}).catch(error => {
+
+					console.warn(error);
+				});
+			},
+			updatePlayer(player) {
+				axios.put("/players/" + player.id, {
+					id: player.id,
+					firstName: player.firstName,
+					lastName: player.lastName,
+					score: player.score,
+
+				}).then((response) => {
+
+					console.warn("update uspio");
+					this.getPlayers();
+
+				}).catch(error => {
+
+					console.log(error);
+				});
+			},
+			reset(player) {
+				for (let field in player) {
+					player[field] = ''
+				}
+				return player
+			}
+		}
+
+	});
+</script>
+
+</html>

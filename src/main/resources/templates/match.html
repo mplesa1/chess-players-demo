@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Chess matches</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB"
+	    crossorigin="anonymous">
+
+	<!-- vue-->
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+	<!-- axios-->
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+	<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
+	<link type="text/css" rel="stylesheet" href="/css/style.css" />
+</head>
+<header th:include="includes/header"></header>
+
+<body>
+	<div id="root">
+		<div class="container">
+			<table class="table table-hover" style="margin-top: 5%;">
+				<thead class="thead-dark">
+					<tr>
+						<th>#</th>
+						<th>Bijeli</th>
+						<th>Crni</th>
+						<th>Rezultat</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tr v-for="(match,  index) in matches">
+					<td v-cloak>{{index + 1}}</td>
+					<td v-cloak>{{match.white.firstName + " " + match.white.lastName}}</td>
+					<td v-cloak>{{match.black.firstName + " " + match.black.lastName}}</td>
+					<td v-cloak>{{match.result}}</td>
+					<td v-cloak>
+						<a class="btn btn-warning btn-sm" v-on:click="openMatchAoe(match.id)">Edit</a>
+						<a class="btn btn-danger btn-sm">Delete</a>
+					</td>
+				</tr>
+
+			</table>
+			<a class="btn btn-dark text-white" v-on:click="openMatchAoe()">Dodaj meč</a>
+		</div>
+
+		<template>
+			<div v-if="matchAoe">
+				<b-modal @ok="submitMatch(match)" v-model="matchAoe" id="modal-center" centered title="Dodaj meč" v-bind:ok-title="modalButton">
+					<form id="saveForm">
+						<div class="form-group">
+							<label for="message-text" class="col-form-label">Bijeli:</label>
+							<select v-model="match.white" class="form-control">
+								<option v-for="player in players" v-bind:value="player">
+									{{ player.firstName + " " + player.lastName }}
+								</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="message-text" class="col-form-label">Crni:</label>
+							<select v-model="match.black" class="form-control">
+								<option v-for="player in players" v-bind:value="player">
+									{{ player.firstName + player.lastName }}
+								</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="message-text" class="col-form-label">Rezultat:</label>
+							<select v-model="match.result" class="form-control">
+								<option v-for="result in results" v-bind:value="result">
+									{{ result }}
+								</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="matchPgn" class="col-form-label">PGN:</label>
+							<input v-model="match.pgn" type="text" class="form-control" id="matchPgn" required>
+						</div>
+					</form>
+				</b-modal>
+			</div>
+		</template>
+
+	</div>
+</body>
+
+<footer class="page-footer font-small black" th:include="includes/footer.html"></footer>
+
+
+
+
+<script>
+	var app = new Vue({
+		el: '#root',
+		data: {
+			matches: [],
+			match: [],
+			matchForm: [],
+			players: [],
+			results: [],
+			matchAoe: false,
+			modalButton: "",
+			selectedWhite: {},
+			selectedBlack: {},
+			selectedResult: [],
+			match: {
+				id: '',
+				firstName: "",
+				lastName: "",
+				pgn: "",
+				result: []
+			},
+			matchForm: {
+				id: '',
+				firstName: "",
+				lastName: "",
+				pgn: "",
+				result: []
+			},
+			player: {
+				id: '',
+				firstName: "",
+				lastName: "",
+				score: null
+			}
+		},
+		mounted() {
+			this.getMatches();
+		},
+		methods: {
+			getMatches() {
+				axios.get("/matches").then(function (response) {
+					this.matches = response.data;
+				}.bind(this));
+			},
+			getMatch(matchId) {
+				axios.get("/matches/" + matchId).then(function (response) {
+					this.match = response.data;
+					console.error(this.match);
+				}.bind(this));
+			},
+			getPlayers() {
+				axios.get("/players").then(function (response) {
+					this.players = response.data;
+					//console.log(this.players);
+				}.bind(this));
+			},
+			getResults() {
+				axios.get("/matches/getResults").then(function (response) {
+					this.results = response.data;
+					//console.log(this.results);
+				}.bind(this));
+			},
+			openMatchAoe(matchId) {
+				this.getPlayers();
+				console.log(matchId)
+				if (matchId) {
+					this.modalButton = "Izmjeni";
+					//var matchForm = JSON.parse(JSON.stringify(match));
+					//var matchForm = Object.assign(match);
+					this.getMatch(matchId);
+					// this.selectedBlack = this.match.black;
+					// this.selectedWhite = this.match.white;
+
+				} else {
+					this.modalButton = "Dodaj";
+					this.reset(this.match);
+				}
+				this.getResults();
+				this.matchAoe = true;
+			},
+			submitMatch(match) {
+				console.error(match)
+				if (match) {
+					if (match.id) {
+						this.updateMatch(match);
+					} else {
+						this.saveMatch(match);
+					}
+				} else {
+					return console.log('nema matcha');
+				}
+			},
+			onCancel() {
+				this.form.reset()
+				this.$emit('cancel')
+			},
+			saveMatch(match) {
+				axios.post("/matches", {
+					black: match.black,
+					white: match.white,
+					result: match.result,
+					pgn: match.pgn
+
+				}).then((response) => {
+
+					console.log("add uspio");
+					this.getMatches();
+
+				}).catch(error => {
+
+					console.warn(error);
+				});
+			},
+			updateMatch(match) {
+				axios.put("/matches/" + match.id, {
+					id: match.id,
+					black: match.black,
+					white: match.white,
+					result: match.result,
+					pgn: match.pgn
+
+				}).then((response) => {
+
+					this.getMatches();
+
+				}).catch(error => {
+
+					console.log(error);
+				});
+			},
+			reset(player) {
+				for (let field in player) {
+					player[field] = ''
+				}
+				return player
+			}
+		}
+
+	});
+</script>
+
+</html>

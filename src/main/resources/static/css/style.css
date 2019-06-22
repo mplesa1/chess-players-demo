@@ -1,0 +1,25 @@
+[v-cloak] {
+	display: none;
+}
+
+.selected {
+	background-color: #edecea;
+}
+
+.navbar-nav {
+	float: none;
+	margin: 0 auto;
+	display: block;
+	text-align: center;
+}
+
+.navbar-nav>li {
+	display: inline-block;
+	float: none;
+}
+
+.labelDetail {
+	font-weight: bolder;
+	border-bottom: 2px ;
+
+}
